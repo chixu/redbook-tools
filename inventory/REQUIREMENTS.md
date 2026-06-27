@@ -57,11 +57,13 @@
 
 ### 2.3 采购订单
 
-采购订单指已经下单但未必到货的库存采购记录。
+采购订单指已经下单但未确认到货的库存采购记录。
+
+采购订单只表示“已经买了、正在路上或已经到货”，它本身不是库存流水。下单时不会修改当前库存。
 
 采购提交后：
 
-- 生成采购记录
+- 生成 `purchaseOrders` 记录
 - 状态为 `pending`
 - 数量暂时不加入当前库存
 - 首页显示为运输中数量
@@ -70,23 +72,24 @@
 点击确认到货后：
 
 - 订单状态改为 `arrived`
-- 数量加入当前库存
 - 记录实际到货时间
-- 在库存历史记录中追加一条到货记录
+- 数量加入当前库存
+- 在 `stockMovements` 中追加一条到货入库流水
 
-### 2.4 库存历史记录
+### 2.4 库存流水
 
-库存历史记录记录所有库存变动来源：
+库存流水记录“实际改变当前库存”的事件。
 
-- 采购下单
-- 采购到货
+第一版包含：
+
+- 采购到货入库
 - 产品生产消耗
 
-消耗记录使用负数数量。
+注意：采购下单不写入库存流水，因为下单并没有改变当前库存。
 
 ### 2.5 产品生产历史记录
 
-产品生产历史记录记录每天提交的产品生产数量，以及提交后当前库存快照。
+产品生产历史记录记录每次提交的产品生产数量、实际消耗的耗材数量，以及提交后的当前库存快照。
 
 ## 3. 数据存储
 
@@ -103,7 +106,8 @@ type InventoryData = {
   currentStock: Record<string, number>;
   stockTypes: Record<string, StockTypeConfig>;
   products: Record<string, ProductConfig>;
-  stockHistory: StockHistoryRecord[];
+  purchaseOrders: PurchaseOrder[];
+  stockMovements: StockMovement[];
   productionHistory: ProductionHistoryRecord[];
 };
 
@@ -117,18 +121,24 @@ type ProductConfig = {
   materials: Record<string, number>;
 };
 
-type StockHistoryRecord = {
+type PurchaseOrder = {
   id: string;
-  type: "purchase_ordered" | "purchase_arrived" | "consume";
   stockName: string;
   quantity: number;
-  orderDate?: string;
-  estimatedArrivalDate?: string;
+  orderDate: string;
+  estimatedArrivalDate: string;
+  status: "pending" | "arrived";
   arrivedAt?: string;
-  consumedAt?: string;
-  relatedOrderId?: string;
-  productionRecordId?: string;
-  status?: "pending" | "arrived";
+};
+
+type StockMovement = {
+  id: string;
+  type: "purchase_arrived" | "consume" | "adjustment";
+  stockName: string;
+  quantity: number;
+  date: string;
+  relatedPurchaseOrderId?: string;
+  relatedProductionRecordId?: string;
   note?: string;
 };
 
@@ -164,18 +174,26 @@ type ProductionHistoryRecord = {
 - key 是产品名称。
 - `materials` 表示生产 1 件产品会消耗哪些库存物品以及数量。
 
-`stockHistory`：
+`purchaseOrders`：
 
-- 库存历史流水。
-- `purchase_ordered` 表示采购下单，数量为正数，但不加入当前库存。
-- `purchase_arrived` 表示采购到货，数量为正数，并加入当前库存。
+- 采购订单列表。
+- `pending` 表示已下单但未确认到货。
+- `arrived` 表示已经确认到货。
+- 采购订单用于待收货页面、运输中库存统计、采购历史查看。
+- 采购订单不直接代表库存增加。
+
+`stockMovements`：
+
+- 库存实际变动流水。
+- `purchase_arrived` 表示采购到货入库，数量为正数，并加入当前库存。
 - `consume` 表示生产消耗，数量为负数，并扣减当前库存。
+- `adjustment` 预留给未来手动调整库存使用，第一版可以不在页面中暴露。
 
 `productionHistory`：
 
 - 每次提交消耗页后生成一条记录。
 - `date` 是生产日期。
-- `products` 是当天各产品生产数量。
+- `products` 是本次提交的各产品生产数量。
 - `consumedMaterials` 是本次提交实际消耗的库存物品数量，使用正数表示消耗量。
 - `stockAfter` 是提交完成后的当前库存快照，不包含运输中库存。
 
@@ -217,7 +235,8 @@ type ProductionHistoryRecord = {
       }
     }
   },
-  "stockHistory": [],
+  "purchaseOrders": [],
+  "stockMovements": [],
   "productionHistory": []
 }
 ```
@@ -256,12 +275,9 @@ YYYY-MM-DD
 
 ### 4.3 运输中库存
 
-运输中库存来自 `stockHistory` 中：
+运输中库存来自 `purchaseOrders` 中 `status = "pending"` 的订单。
 
-- `type = "purchase_ordered"`
-- `status = "pending"`
-
-同一物品如果有多个不同预计到达日期，需要分开展示。
+同一物品如果有多个不同预计到达日期，需要分开展示，展示方式不限于文字，可以使用格子配合多种颜色。
 
 例如：
 
@@ -271,15 +287,15 @@ YYYY-MM-DD
 
 其中：
 
-- `300` 是当前库存
-- `150 (5-1)` 是预计到达日期为 5 月 1 日的在途数量
-- `150 (5-2)` 是预计到达日期为 5 月 2 日的在途数量
+- `300` 是当前库存。
+- `150 (5-1)` 是预计到达日期为 5 月 1 日的在途数量。
+- `150 (5-2)` 是预计到达日期为 5 月 2 日的在途数量。
 
 如果同一物品有多条订单的预计到达日期相同，首页可以合并展示为一项。
 
 ### 4.4 预计到达日期
 
-采购提交时，每条采购记录需要生成预计到达日期。
+采购提交时，每条采购订单需要生成预计到达日期。
 
 计算规则：
 
@@ -304,12 +320,14 @@ YYYY-MM-DD
 
 确认到货时：
 
-1. 找到对应 `purchase_ordered` 记录。
-2. 将该记录的 `status` 改为 `arrived`。
-3. 将采购数量加入 `currentStock[stockName]`。
-4. 追加一条 `purchase_arrived` 库存历史记录。
-5. `purchase_arrived` 记录的 `arrivedAt` 为确认到货当天日期。
-6. `purchase_arrived.relatedOrderId` 指向原采购下单记录 id。
+1. 找到对应 `purchaseOrders` 记录。
+2. 该订单 `status` 必须是 `pending`。
+3. 将该订单的 `status` 改为 `arrived`。
+4. 将该订单的 `arrivedAt` 改为确认到货当天日期。
+5. 将采购数量加入 `currentStock[stockName]`。
+6. 追加一条 `purchase_arrived` 库存流水。
+7. `purchase_arrived.date` 为确认到货当天日期。
+8. `purchase_arrived.relatedPurchaseOrderId` 指向原采购订单 id。
 
 ### 4.6 最近三天平均损耗
 
@@ -416,8 +434,8 @@ const INCLUDE_IN_TRANSIT_IN_REORDER_CHECK = false;
 
 应购买状态：
 
-- 如果需要购买，显示 `应购买`
-- 如果不需要购买，显示 `暂不购买`
+- 如果需要购买，显示 `应购买`。
+- 如果不需要购买，显示 `暂不购买`。
 
 ### 5.3 购买页 `/purchase`
 
@@ -445,14 +463,15 @@ const INCLUDE_IN_TRANSIT_IN_REORDER_CHECK = false;
 
 提交后：
 
-1. 对每个数量大于 0 的库存物品生成一条 `purchase_ordered` 记录。
+1. 对每个数量大于 0 的库存物品生成一条 `purchaseOrders` 记录。
 2. `orderDate` 为当天日期。
 3. `estimatedArrivalDate` 按预计到达日期规则计算。
 4. `status` 为 `pending`。
 5. 不修改 `currentStock`。
-6. 提交成功后清空表单。
-7. 首页运输中数量立即增加。
-8. 待收货页出现对应订单。
+6. 不写入 `stockMovements`。
+7. 提交成功后清空表单。
+8. 首页运输中数量立即增加。
+9. 待收货页出现对应订单。
 
 ### 5.4 消耗页 `/consume`
 
@@ -477,13 +496,14 @@ const INCLUDE_IN_TRANSIT_IN_REORDER_CHECK = false;
 
 1. 根据所有产品输入数量计算本次消耗的库存物品总量。
 2. 从 `currentStock` 扣除对应库存物品数量。
-3. 对每种被消耗的库存物品，追加一条 `consume` 类型库存历史记录。
-4. `consume.quantity` 使用负数。
-5. 追加一条 `productionHistory` 记录。
-6. `productionHistory.products` 保存本次提交的产品生产数量。
-7. `productionHistory.consumedMaterials` 保存本次提交的耗材消耗量，使用正数。
-8. `productionHistory.stockAfter` 保存扣减后的当前库存快照。
-9. 提交成功后清空表单。
+3. 先生成一条 `productionHistory` 记录，拿到该记录 id。
+4. 对每种被消耗的库存物品，追加一条 `consume` 类型库存流水。
+5. `consume.quantity` 使用负数。
+6. `consume.relatedProductionRecordId` 指向本次生产历史记录 id。
+7. `productionHistory.products` 保存本次提交的产品生产数量。
+8. `productionHistory.consumedMaterials` 保存本次提交的耗材消耗量，使用正数。
+9. `productionHistory.stockAfter` 保存扣减后的当前库存快照。
+10. 提交成功后清空表单。
 
 ### 5.5 待收货页 `/receiving`
 
@@ -491,7 +511,7 @@ const INCLUDE_IN_TRANSIT_IN_REORDER_CHECK = false;
 
 订单来源：
 
-- `stockHistory` 中 `type = "purchase_ordered"` 且 `status = "pending"` 的记录。
+- `purchaseOrders` 中 `status = "pending"` 的记录。
 
 每条订单显示：
 
@@ -509,6 +529,7 @@ const INCLUDE_IN_TRANSIT_IN_REORDER_CHECK = false;
 3. 当前库存增加。
 4. 首页运输中数量减少。
 5. 首页当前库存数量增加。
+6. `stockMovements` 中增加一条 `purchase_arrived` 流水。
 
 如果没有待收货订单，显示：
 
@@ -560,7 +581,12 @@ POST /api/purchase
 - 忽略数量为 0 的项。
 - 至少有一项数量大于 0。
 
-成功后返回更新后的 `InventoryData`。
+成功后：
+
+- 追加 `purchaseOrders` 记录。
+- 不修改 `currentStock`。
+- 不追加 `stockMovements`。
+- 返回更新后的 `InventoryData`。
 
 ### 6.3 提交生产消耗
 
@@ -593,9 +619,15 @@ POST /api/consume
 - 数量必须是非负整数。
 - 忽略数量为 0 的项。
 - 至少有一项数量大于 0。
+- 产品配方中的库存物品必须存在于 `stockTypes`。
 - 允许库存扣成负数。
 
-成功后返回更新后的 `InventoryData`。
+成功后：
+
+- 扣减 `currentStock`。
+- 追加一条 `productionHistory`。
+- 对每种被消耗的库存物品追加一条 `consume` 类型 `stockMovements`。
+- 返回更新后的 `InventoryData`。
 
 ### 6.4 确认到货
 
@@ -613,10 +645,16 @@ POST /api/receiving/confirm
 
 服务端校验：
 
-- `orderId` 必须对应一条存在的 `purchase_ordered` 记录。
-- 该记录 `status` 必须是 `pending`。
+- `orderId` 必须对应一条存在的 `purchaseOrders` 记录。
+- 该订单 `status` 必须是 `pending`。
 
-成功后返回更新后的 `InventoryData`。
+成功后：
+
+- 将订单状态改为 `arrived`。
+- 写入 `arrivedAt`。
+- 增加 `currentStock`。
+- 追加一条 `purchase_arrived` 类型 `stockMovements`。
+- 返回更新后的 `InventoryData`。
 
 ## 7. 派生数据计算
 
@@ -626,7 +664,7 @@ POST /api/receiving/confirm
 
 输入：
 
-- `stockHistory`
+- `purchaseOrders`
 
 输出：
 
@@ -636,7 +674,7 @@ Record<string, Array<{ estimatedArrivalDate: string; quantity: number }>>
 
 规则：
 
-- 只统计 `purchase_ordered` 且 `pending` 的记录。
+- 只统计 `status = "pending"` 的采购订单。
 - 按 `stockName` 分组。
 - 同一 `stockName` 和同一 `estimatedArrivalDate` 的数量合并。
 
@@ -699,6 +737,7 @@ Record<string, number>
 - 超过预计到达日期的 pending 订单仍然只显示为待收货，不自动修改库存。
 - 同一天可以多次提交生产记录。
 - 同一天可以多次提交采购记录。
+- 同一采购订单只能确认到货一次。
 
 ## 9. 第一版不做的功能
 
@@ -721,12 +760,12 @@ Record<string, number>
 1. 本地启动 Next.js 后可以访问首页。
 2. 首页能展示所有库存物品、当前库存、运输中库存、平均损耗、补货建议。
 3. 购买页可以一次提交多个库存物品采购。
-4. 采购提交后不会增加当前库存，但会增加运输中数量。
+4. 采购提交后只生成 `purchaseOrders`，不会增加当前库存，也不会写入 `stockMovements`。
 5. 待收货页能看到 pending 订单。
-6. 点击确认到货后，当前库存增加，pending 订单消失，并生成到货历史记录。
+6. 点击确认到货后，当前库存增加，pending 订单消失，并生成 `purchase_arrived` 库存流水。
 7. 消耗页可以提交多个产品生产数量。
 8. 消耗提交后，系统根据产品配方扣减库存，允许库存为负。
-9. 消耗提交后，库存历史记录和产品生产历史记录都正确更新。
+9. 消耗提交后，`stockMovements` 和 `productionHistory` 都正确更新。
 10. 最近三天损耗按今天之前三个自然日计算，缺失日期按 0。
 11. 补货判断默认不计算运输中库存，但代码中有 flag 可以切换。
 12. 所有数据持久保存到本地 JSON 文件。
