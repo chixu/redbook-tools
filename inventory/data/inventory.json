@@ -1,0 +1,113 @@
+{
+  "currentStock": {
+    "贴纸": 300,
+    "包装袋": 120,
+    "卡片": 500,
+    "气泡袋": 80
+  },
+  "stockTypes": {
+    "贴纸": {
+      "incCount": 150,
+      "alertDates": 3
+    },
+    "包装袋": {
+      "incCount": 100,
+      "alertDates": 5,
+      "arrivalDays": 3
+    },
+    "卡片": {
+      "incCount": 200,
+      "alertDates": 3
+    },
+    "气泡袋": {
+      "incCount": 100,
+      "alertDates": 4,
+      "arrivalDays": 2
+    }
+  },
+  "products": {
+    "小红书套装A": {
+      "materials": {
+        "贴纸": 1,
+        "包装袋": 1,
+        "卡片": 2
+      }
+    },
+    "小红书套装B": {
+      "materials": {
+        "贴纸": 2,
+        "包装袋": 1,
+        "卡片": 1,
+        "气泡袋": 1
+      }
+    },
+    "补寄礼包": {
+      "materials": {
+        "包装袋": 1,
+        "卡片": 1,
+        "气泡袋": 1
+      }
+    }
+  },
+  "purchaseOrders": [],
+  "stockMovements": [],
+  "productionHistory": [
+    {
+      "id": "prod_seed_1",
+      "date": "2026-06-24",
+      "products": {
+        "小红书套装A": 60
+      },
+      "consumedMaterials": {
+        "贴纸": 60,
+        "包装袋": 60,
+        "卡片": 120
+      },
+      "stockAfter": {
+        "贴纸": 520,
+        "包装袋": 240,
+        "卡片": 820,
+        "气泡袋": 120
+      }
+    },
+    {
+      "id": "prod_seed_2",
+      "date": "2026-06-25",
+      "products": {
+        "小红书套装A": 80,
+        "补寄礼包": 20
+      },
+      "consumedMaterials": {
+        "贴纸": 80,
+        "包装袋": 100,
+        "卡片": 180,
+        "气泡袋": 20
+      },
+      "stockAfter": {
+        "贴纸": 440,
+        "包装袋": 140,
+        "卡片": 640,
+        "气泡袋": 100
+      }
+    },
+    {
+      "id": "prod_seed_3",
+      "date": "2026-06-26",
+      "products": {
+        "小红书套装B": 20
+      },
+      "consumedMaterials": {
+        "贴纸": 40,
+        "包装袋": 20,
+        "卡片": 20,
+        "气泡袋": 20
+      },
+      "stockAfter": {
+        "贴纸": 300,
+        "包装袋": 120,
+        "卡片": 500,
+        "气泡袋": 80
+      }
+    }
+  ]
+}
