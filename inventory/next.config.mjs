@@ -1,4 +1,3 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {};
+import sharedConfig from "../next.config.mjs";
 
-export default nextConfig;
+export default { ...sharedConfig };

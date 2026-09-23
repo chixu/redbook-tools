@@ -1,12 +1,12 @@
 {
-  "name": "inventory",
+  "name": "redbook-tools",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "node scripts/run-project.mjs dev",
+    "build": "node scripts/run-project.mjs build",
+    "start": "node scripts/run-project.mjs start",
+    "typecheck": "node scripts/run-project.mjs typecheck"
   },
   "dependencies": {
     "next": "14.2.4",

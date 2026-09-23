@@ -2,3 +2,6 @@
 node_modules/
 dev-server.*.log
 npm-debug.log*
+*.tsbuildinfo
+.env*
+!.env.example
