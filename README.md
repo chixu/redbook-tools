@@ -9,6 +9,7 @@ redbook-tools/
 ├── next.config.mjs       # 公共 Next.js 配置
 ├── tsconfig.base.json    # 公共 TypeScript 配置
 ├── scripts/run-project.mjs
+├── common/               # 共享样式、开发规则和设计准则
 └── inventory/            # 独立的库存 Web 项目
     ├── app/
     ├── components/
@@ -41,7 +42,8 @@ npm run start -- inventory
 1. 在根目录创建项目文件夹，例如 `reports/`（名称使用字母、数字、连字符或下划线）。
 2. 创建自己的 `app/layout.tsx` 和 `app/page.tsx`。
 3. 复制 `inventory/next.config.mjs`、`inventory/tsconfig.json` 和 `inventory/next-env.d.ts` 到新项目，按需覆盖项目配置。
-4. 执行 `npm run dev -- reports --port 3001`。
+4. 在根布局中先引入 `../../common/styles/index.css`，再引入项目自己的样式，参考 [公共文件说明](common/README.md)。
+5. 执行 `npm run dev -- reports --port 3001`。
 
 新项目无需单独的 `package.json` 或 `node_modules`。需要额外依赖时，在根目录运行 `npm install <包名>`。
 不同项目可以在独立终端中同时运行，使用不同端口即可：
@@ -50,3 +52,5 @@ npm run start -- inventory
 npm run dev -- inventory --port 3000
 npm run dev -- reports --port 3001
 ```
+
+公共开发约定见 [development.md](common/rules/development.md)，设计准则见 [design.md](common/rules/design.md)。

@@ -1,0 +1,14 @@
+:root {
+  --ink: #16211f;
+  --muted: #68736f;
+  --line: #d9dfdc;
+  --surface: #f7f9f7;
+  --panel: #ffffff;
+  --spruce: #0f5f56;
+  --mint: #d7f2e8;
+  --signal: #d94d3a;
+  --amber: #f0b429;
+  --rail: #263d3a;
+  --shadow: 0 18px 48px rgba(22, 33, 31, 0.09);
+}
+
