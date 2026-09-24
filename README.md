@@ -10,6 +10,7 @@ redbook-tools/
 ├── tsconfig.base.json    # 公共 TypeScript 配置
 ├── scripts/run-project.mjs
 ├── common/               # 共享样式、开发规则和设计准则
+├── wordSelector/         # TXT 词表挑选，选择结果自动保存
 └── inventory/            # 独立的库存 Web 项目
     ├── app/
     ├── components/
@@ -38,6 +39,14 @@ npm run start -- inventory
 命令始终以项目目录为工作目录，因此 `process.cwd()` 指向该项目。
 
 ## 新增项目
+
+现有项目：`inventory`（库存管理）、[wordSelector](wordSelector/README.md)（TXT 词表挑选）。
+
+```sh
+npm run dev -- wordSelector wordSelector/example.txt
+```
+
+`wordSelector` 的文件路径紧跟项目名；可在其后追加 `--port 3001`。
 
 1. 在根目录创建项目文件夹，例如 `reports/`（名称使用字母、数字、连字符或下划线）。
 2. 创建自己的 `app/layout.tsx` 和 `app/page.tsx`。

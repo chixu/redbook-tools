@@ -1,0 +1,3 @@
+单词|词元|备注|词频|考频
+aaron|aaron||6|3
+abbreviation|abbreviate||13|13

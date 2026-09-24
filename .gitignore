@@ -5,3 +5,5 @@ npm-debug.log*
 *.tsbuildinfo
 .env*
 !.env.example
+*.selection
+*.selection.*.tmp

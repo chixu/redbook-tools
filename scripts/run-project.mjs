@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -22,11 +22,32 @@ if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(project) ||
 }
 
 const cli = require.resolve(command === "typecheck" ? "typescript/bin/tsc" : "next/dist/bin/next");
+const env = { ...process.env };
+if (project === "wordSelector" && ["dev", "start"].includes(command)) {
+  const file = args.shift();
+  if (!file || file.startsWith("-")) {
+    console.error(`Usage: npm run ${command} -- wordSelector <filepath.txt> [--port 3001]`);
+    process.exit(1);
+  }
+  const filePath = path.resolve(process.cwd(), file);
+  try {
+    if (path.extname(filePath).toLowerCase() !== ".txt" || !statSync(filePath).isFile()) {
+      throw new Error("Expected a .txt file");
+    }
+  } catch (error) {
+    console.error(`Cannot load ${filePath}: ${error.message}`);
+    process.exit(1);
+  }
+  env.WORD_SELECTOR_FILE = filePath;
+  if (!args.some((arg) => arg === "--hostname" || arg === "-H" || arg.startsWith("--hostname="))) {
+    args.push("--hostname", "127.0.0.1");
+  }
+}
 const cliArgs = command === "typecheck" ? ["--noEmit", ...args] : [command, ...args];
 const child = spawn(process.execPath, [cli, ...cliArgs], {
   cwd: projectDir,
   stdio: "inherit",
-  env: process.env,
+  env,
 });
 
 child.on("error", (error) => {
